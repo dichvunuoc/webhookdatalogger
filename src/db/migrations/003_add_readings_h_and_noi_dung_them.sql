@@ -1,0 +1,3 @@
+ALTER TABLE datalogger_readings
+  ADD COLUMN IF NOT EXISTS h NUMERIC,
+  ADD COLUMN IF NOT EXISTS noi_dung_them TEXT;

@@ -1,0 +1,40 @@
+# Triển khai VPS: API và TimescaleDB chỉ trong mạng Docker — không publish cổng ra host.
+# Truy cập từ ngoài: thêm Nginx/Traefik cùng network trỏ tới http://api:3000 hoặc dùng docker exec để test.
+# Cách chạy trên server:
+#   cp .env.production.example .env.production && nano .env.production
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-datalogger}
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      # Khớp POSTGRES_USER / POSTGRES_DB mặc định; đổi user/db thì sửa dòng này cho khớp.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d datalogger"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build: .
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-datalogger}
+      QUAWACO_API_KEYS: ${QUAWACO_API_KEYS:?set QUAWACO_API_KEYS in .env.production}
+      MAX_READINGS_PER_REQUEST: ${MAX_READINGS_PER_REQUEST:-5000}
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  timescale_data:

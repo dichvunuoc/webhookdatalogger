@@ -1,0 +1,33 @@
+{
+  "name": "webhookdatalogger",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env ./node_modules/.bin/tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "migrate": "node --env-file=.env ./node_modules/.bin/tsx scripts/migrate.ts",
+    "migrate:prod": "node dist/scripts/migrate.js",
+    "test:smoke": "bash scripts/smoke-api.sh",
+    "deploy:vps": "bash scripts/deploy-vps.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.5",
+    "fastify": "^5.2.1",
+    "luxon": "^3.5.0",
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
