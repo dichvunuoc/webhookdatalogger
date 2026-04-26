@@ -7,6 +7,7 @@
     "dev": "node --env-file=.env ./node_modules/.bin/tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/src/index.js",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "migrate": "node --env-file=.env ./node_modules/.bin/tsx scripts/migrate.ts",
     "migrate:prod": "node dist/scripts/migrate.js",
     "test:smoke": "bash scripts/smoke-api.sh",
@@ -21,6 +22,7 @@
     "fastify": "^5.2.1",
     "luxon": "^3.5.0",
     "pg": "^8.13.1",
+    "redis": "^5.12.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {

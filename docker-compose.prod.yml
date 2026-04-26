@@ -5,6 +5,13 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 
 services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     environment:
@@ -14,8 +21,8 @@ services:
     volumes:
       - timescale_data:/var/lib/postgresql/data
     healthcheck:
-      # Khớp POSTGRES_USER / POSTGRES_DB mặc định; đổi user/db thì sửa dòng này cho khớp.
-      test: ["CMD-SHELL", "pg_isready -U postgres -d datalogger"]
+      # Phải khớp user/db thật trong container (mặc định postgres / datalogger).
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -30,11 +37,22 @@ services:
       PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-datalogger}
       QUAWACO_API_KEYS: ${QUAWACO_API_KEYS:?set QUAWACO_API_KEYS in .env.production}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       MAX_READINGS_PER_REQUEST: ${MAX_READINGS_PER_REQUEST:-5000}
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-false}
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379}
+      REALTIME_REDIS_CHANNEL: ${REALTIME_REDIS_CHANNEL:-datalogger:readings:realtime}
+      REALTIME_HEARTBEAT_MS: ${REALTIME_HEARTBEAT_MS:-15000}
+      REALTIME_BACKFILL_LIMIT: ${REALTIME_BACKFILL_LIMIT:-500}
+      FALLBACK_WEBHOOK_URL: ${FALLBACK_WEBHOOK_URL:-}
+      FALLBACK_API_KEY: ${FALLBACK_API_KEY:-}
     depends_on:
+      redis:
+        condition: service_started
       timescaledb:
         condition: service_healthy
     restart: unless-stopped
 
 volumes:
   timescale_data:
+  redis_data:

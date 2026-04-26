@@ -19,11 +19,13 @@ import {
   postDeviceSchema,
 } from "../openapi/schemas.js";
 import { devicesListQuerySchema } from "../schemas/device.js";
+import { FallbackWebhookService } from "../services/fallbackWebhookService.js";
 
 export type DevicesOpts = { pool: pg.Pool; env: Env };
 
 const devicesRoutes: FastifyPluginAsync<DevicesOpts> = async (fastify, opts) => {
-  const { pool } = opts;
+  const { pool, env } = opts;
+  const fallbackService = new FallbackWebhookService(env.FALLBACK_WEBHOOK_URL, env.FALLBACK_API_KEY);
 
   fastify.get("/", { schema: getDevicesListSchema }, async (request, reply) => {
     const parsed = devicesListQuerySchema.safeParse(request.query);

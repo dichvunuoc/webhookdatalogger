@@ -217,7 +217,12 @@ const readingPoint = {
     h: { ...nullableNumber, description: "Mực nước H (tùy chọn theo loại điểm đo)" },
     AdditionalDetails: {
       ...nullableObject,
-      description: "Thông tin bổ sung dạng JSON object (tùy chọn)",
+      description:
+        "Thông tin bổ sung dạng JSON object (tùy chọn). Có thể dùng `additionalDetails` (camelCase) thay thế — server map sang cùng trường.",
+    },
+    additionalDetails: {
+      ...nullableObject,
+      description: "Alias camelCase của `AdditionalDetails` (tùy chọn).",
     },
   },
 } as const;
@@ -360,3 +365,111 @@ export function postReadingsSchema(maxBatch: number) {
     },
   };
 }
+
+export function getRealtimeReadingsStreamSchema(backfillLimit: number) {
+  return {
+    tags: ["Realtime"],
+    summary: "Stream dữ liệu đo realtime theo datalogger",
+    description:
+      "Mở kết nối SSE để nhận sự kiện `reading.created` ngay khi server ingest thành công. " +
+      "Khi reconnect có thể truyền `lastEventTime` để server gửi `reading.backfill` trước khi vào luồng realtime.",
+    security: [{ apiKey: [] }],
+    querystring: {
+      type: "object",
+      required: ["dataloggerCode"],
+      properties: {
+        dataloggerCode: {
+          type: "string",
+          minLength: 1,
+          description: "Mã datalogger cần subscribe",
+        },
+        lastEventTime: {
+          type: "string",
+          format: "date-time",
+          description: "Mốc thời gian event cuối đã xử lý (để backfill khi reconnect)",
+        },
+        backfillLimit: {
+          type: "integer",
+          minimum: 1,
+          maximum: backfillLimit,
+          default: backfillLimit,
+          description: "Số reading tối đa trả về trong event `reading.backfill`",
+        },
+      },
+    },
+    produces: ["text/event-stream"],
+    response: {
+      200: {
+        description: "Luồng SSE (event-stream)",
+        content: {
+          "text/event-stream": {
+            schema: { type: "string" },
+          },
+        },
+      },
+      400: { ...errorBody, description: "Query không hợp lệ" },
+      401: { description: "Thiếu hoặc sai X-API-Key" },
+      503: { ...errorBody, description: "Realtime đang tắt trên server" },
+    },
+  };
+}
+
+export const getRealtimeSummaryStreamSchema = {
+  tags: ["Realtime"],
+  summary: "Stream tong quan realtime cho dashboard",
+  description:
+    "Mở 1 kết nối SSE duy nhất để nhận sự kiện `reading.summary` cho mọi thiết bị có dữ liệu mới. " +
+    "Phù hợp màn hình danh sách/map nhiều thiết bị.",
+  security: [{ apiKey: [] }],
+  produces: ["text/event-stream"],
+  response: {
+    200: {
+      description: "Luồng SSE (event-stream) tổng quan",
+      content: {
+        "text/event-stream": {
+          schema: { type: "string" },
+        },
+      },
+    },
+    401: { description: "Thiếu hoặc sai X-API-Key" },
+    503: { ...errorBody, description: "Realtime đang tắt trên server" },
+  },
+} as const;
+
+const pushAllFailureItem = {
+  type: "object",
+  properties: {
+    dataloggerCode: { type: "string" },
+    detail: { type: "string" },
+  },
+} as const;
+
+export const postPushAllToIcleverSchema = {
+  tags: ["Sync"],
+  summary: "Đẩy toàn bộ dữ liệu local sang IOC (iclever.vn)",
+  description:
+    "Đọc mọi thiết bị chưa xóa mềm và toàn bộ điểm đo trong DB, gửi tuần tự lên **https://datalogger-webhook.iclever.vn** " +
+    "(POST/PATCH thiết bị, bulk readings tối đa 500 điểm mỗi lần theo tài liệu IOC). " +
+    "Cần **FALLBACK_API_KEY** trên server (X-API-Key hợp lệ trên host đích). Request có thể chạy lâu nếu dữ liệu lớn.",
+  security: [{ apiKey: [] }],
+  response: {
+    200: {
+      description: "Đã hoàn tất một vòng đẩy (một số thiết bị/batch có thể báo lỗi trong mảng failed)",
+      type: "object",
+      properties: {
+        targetUrl: { type: "string", format: "uri" },
+        devicesAttempted: { type: "integer", minimum: 0 },
+        devicesSyncedOk: { type: "integer", minimum: 0 },
+        devicesFailed: { type: "array", items: pushAllFailureItem },
+        readingsBatches: { type: "integer", minimum: 0 },
+        readingsPoints: { type: "integer", minimum: 0 },
+        readingsFailed: { type: "array", items: pushAllFailureItem },
+      },
+    },
+    400: {
+      ...errorBody,
+      description: "Chưa cấu hình FALLBACK_API_KEY",
+    },
+    401: { description: "Thiếu hoặc sai X-API-Key (request vào API này)" },
+  },
+} as const;

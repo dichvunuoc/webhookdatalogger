@@ -61,6 +61,44 @@ export async function listReadingsByDataloggerCode(
   }));
 }
 
+/** Đọc điểm đo theo thời gian tăng dần (keyset `time` > after) — phục vụ đồng bộ batch. */
+export async function listReadingsPageAsc(
+  pool: Pool,
+  dataloggerCode: string,
+  opts: { afterTimeExclusive: Date | null; limit: number }
+): Promise<ReadingRowOut[] | null> {
+  const dev = await pool.query(`SELECT 1 FROM devices WHERE datalogger_code = $1 AND deleted_at IS NULL`, [
+    dataloggerCode,
+  ]);
+  if (dev.rowCount === 0) {
+    return null;
+  }
+  const res = await pool.query<{
+    time: Date;
+    p: string | null;
+    q: string | null;
+    h: string | null;
+    additional_details: Record<string, unknown> | null;
+  }>(
+    `SELECT r."time", r.p, r.q, r.h, r.additional_details
+     FROM datalogger_readings r
+     INNER JOIN devices d ON d.id = r.device_id
+     WHERE d.datalogger_code = $1
+       AND d.deleted_at IS NULL
+       AND ($2::timestamptz IS NULL OR r."time" > $2)
+     ORDER BY r."time" ASC
+     LIMIT $3`,
+    [dataloggerCode, opts.afterTimeExclusive, opts.limit]
+  );
+  return res.rows.map((row) => ({
+    time: row.time.toISOString(),
+    p: row.p == null ? null : Number(row.p),
+    q: row.q == null ? null : Number(row.q),
+    h: row.h == null ? null : Number(row.h),
+    AdditionalDetails: row.additional_details,
+  }));
+}
+
 export async function insertReadingsBatch(
   client: PoolClient,
   deviceId: string,

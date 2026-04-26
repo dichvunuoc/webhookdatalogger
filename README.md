@@ -2,7 +2,7 @@
 
 Service nhỏ (Fastify + TypeScript + TimescaleDB) nhận đăng ký thiết bị và dữ liệu đo đồng hồ (P/Q) theo thời gian. Xác thực Quawaco bằng header `X-API-Key`.
 
-**Tích hợp phía nhà máy / đối tác:** xem [docs/HUONG_DAN_TICH_HOP_WEBHOOK.md](docs/HUONG_DAN_TICH_HOP_WEBHOOK.md). **Swagger UI:** sau khi chạy server, mở [http://localhost:3000/docs](http://localhost:3000/docs) (OpenAPI JSON: `/docs/json`).
+**Tích hợp phía nhà máy / đối tác:** xem [docs/HUONG_DAN_TICH_HOP_WEBHOOK.md](docs/HUONG_DAN_TICH_HOP_WEBHOOK.md). **Swagger UI:** sau khi chạy server, mở [http://localhost:3000/docs](http://localhost:3000/docs) (OpenAPI JSON: `/docs/json`). **Đồng bộ full lên IOC:** `POST /api/v1/sync/push-all` (cần `FALLBACK_API_KEY` hợp lệ trên `https://datalogger-webhook.iclever.vn`).
 
 **Triển khai VPS (SSH + Docker):** [docs/DEPLOY_VPS.md](docs/DEPLOY_VPS.md) — `npm run deploy:vps`. Production **không** publish cổng API ra host; truy cập qua reverse proxy hoặc `docker compose exec api …` (xem tài liệu).
 
@@ -21,6 +21,8 @@ Copy `.env.example` thành `.env` và chỉnh giá trị:
 | `QUAWACO_API_KEYS` | Một hoặc nhiều API key, phân tách bằng dấu phẩy |
 | `PORT` | Cổng HTTP (mặc định 3000) |
 | `MAX_READINGS_PER_REQUEST` | Giới hạn số điểm đo mỗi request (mặc định 5000) |
+| `FALLBACK_WEBHOOK_URL` | (Tuỳ chọn) Base URL IOC để mirror sau khi ghi local thành công, vd. `https://datalogger-webhook.iclever.vn` |
+| `FALLBACK_API_KEY` | (Tuỳ chọn) `X-API-Key` cho mirror sang `FALLBACK_WEBHOOK_URL`; **bắt buộc** nếu gọi `POST /api/v1/sync/push-all` (đích cố định iclever.vn) |
 
 ## Chạy local
 

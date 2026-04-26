@@ -66,6 +66,14 @@ type DevicesListResult = {
   total: number;
 };
 
+/** Mọi thiết bị active — dùng cho đồng bộ full lên IOC. */
+export async function listAllActiveDeviceRows(pool: Pool): Promise<DeviceRow[]> {
+  const res = await pool.query<DeviceRow>(
+    `SELECT * FROM devices WHERE deleted_at IS NULL ORDER BY datalogger_code ASC`
+  );
+  return res.rows;
+}
+
 export async function listDevices(
   pool: Pool,
   opts: { limit: number; offset: number }

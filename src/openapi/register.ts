@@ -28,6 +28,14 @@ export async function registerOpenApiSpec(app: FastifyInstance) {
           name: "Readings",
           description: "Đọc và gửi dữ liệu đo (bulk) — API chính cho nhà máy",
         },
+        {
+          name: "Realtime",
+          description: "Server-Sent Events để client nhận reading mới theo thời gian thực",
+        },
+        {
+          name: "Sync",
+          description: "Đồng bộ toàn bộ dữ liệu local lên host IOC công khai (iclever.vn)",
+        },
       ],
       components: {
         securitySchemes: {

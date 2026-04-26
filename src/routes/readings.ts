@@ -5,12 +5,15 @@ import { insertReadingsBatch, listReadingsByDataloggerCode } from "../services/r
 import type { Env } from "../config.js";
 import type pg from "pg";
 import { getReadingsListSchema, postReadingsSchema } from "../openapi/schemas.js";
+import { FallbackWebhookService } from "../services/fallbackWebhookService.js";
+import { RealtimeService } from "../services/realtimeService.js";
 
-export type ReadingsOpts = { pool: pg.Pool; env: Env };
+export type ReadingsOpts = { pool: pg.Pool; env: Env; realtimeService: RealtimeService };
 
 const readingsRoutes: FastifyPluginAsync<ReadingsOpts> = async (fastify, opts) => {
-  const { pool, env } = opts;
+  const { pool, env, realtimeService } = opts;
   const listQuerySchema = buildReadingsListQuerySchema(env.MAX_READINGS_PER_REQUEST);
+  const fallbackService = new FallbackWebhookService(env.FALLBACK_WEBHOOK_URL, env.FALLBACK_API_KEY);
 
   fastify.get(
     "/:dataloggerCode/readings",
@@ -66,6 +69,13 @@ const readingsRoutes: FastifyPluginAsync<ReadingsOpts> = async (fastify, opts) =
       );
       const inserted = await insertReadingsBatch(client, deviceId, readings);
       await client.query("COMMIT");
+      fallbackService.forwardReadingsFireAndForget(dataloggerCode, readings);
+      await realtimeService.publishReadingCreated({
+        dataloggerCode,
+        readings,
+        inserted,
+        received: readings.length,
+      });
       return reply.code(201).send({
         dataloggerCode,
         deviceId,
